@@ -5,6 +5,9 @@ from collections import defaultdict
 # 🔹 Variable global para almacenar coincidencias
 coincidencias_global = {}
 
+def clear_screen(): # Funcion para limpiar la pantalla
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 def scan_files_and_find_coincidences(folder_path):
     word_map = defaultdict(list)
 
