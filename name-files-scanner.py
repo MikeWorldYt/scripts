@@ -5,7 +5,7 @@ from collections import defaultdict
 # 🔹 Variable global para almacenar coincidencias
 coincidencias_global = {}
 
-def clear_screen(): # Funcion para limpiar la pantalla
+def clear_screen():  # Funcion para limpiar la pantalla
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def scan_files_and_find_coincidences(folder_path):
@@ -23,9 +23,11 @@ def scan_files_and_find_coincidences(folder_path):
     return coincidences
 
 def mostrar_coincidencias(coincidencias):
-    print("\nCoincidencias encontradas:")
-    for word in coincidencias:
-        print(f" ▐ {word}")
+    if coincidencias:
+        for word in coincidencias:
+            print(f" ▐ {word}")
+    else:
+        print(" (No quedan coincidencias)")
 
 def eliminar_palabras(coincidencias):
     eliminar = input("\nIntroduce las palabras que deseas eliminar (separadas por comas): ").lower()
@@ -34,6 +36,7 @@ def eliminar_palabras(coincidencias):
     for palabra in palabras_a_eliminar:
         if palabra in coincidencias:
             del coincidencias[palabra]
+    clear_screen()
 
     return coincidencias
 
@@ -43,15 +46,18 @@ if __name__ == "__main__":
     if not os.path.isdir(folder):
         print("La ruta no existe o no es una carpeta válida.")
     else:
+        clear_screen()
         coincidencias_global = scan_files_and_find_coincidences(folder)
-        mostrar_coincidencias(coincidencias_global)
 
-        # 🔹 Preguntar si desea eliminar palabras
-        respuesta = input("\n¿Deseas eliminar alguna palabra de la lista? (s/n): ").strip().lower()
-        if respuesta == "s":
-            coincidencias_global = eliminar_palabras(coincidencias_global)
-            print("\nLista actualizada:")
+        # 🔹 Bucle de eliminación hasta que el usuario esté conforme
+        while True:
+            print("[Actualizado] Coincidencias encontradas:")
             mostrar_coincidencias(coincidencias_global)
+            respuesta = input("\n¿Deseas eliminar alguna palabra de la lista? (s/n): ").strip().lower()
+            if respuesta == "s":
+                coincidencias_global = eliminar_palabras(coincidencias_global)
+            else:
+                break
 
 # 🔹 Mantener la ventana abierta
 input("\nPresiona Enter para salir...")
