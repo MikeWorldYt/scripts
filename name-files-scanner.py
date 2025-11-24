@@ -25,6 +25,8 @@ def scan_files_and_find_coincidences(folder_path):
 
 def mostrar_coincidencias(coincidencias):
     if coincidencias:
+        clear_screen()
+        print("[Actualizado] Coincidencias encontradas:")
         for word in coincidencias:
             print(f" ▐ {word}")
     else:
@@ -32,7 +34,8 @@ def mostrar_coincidencias(coincidencias):
 
 def guardar_coincidencias(coincidencias):
     while True:
-        ruta_carpeta = input("\nIntroduce la ruta de la carpeta donde guardar el archivo (ejemplo: C:/Users/Usuario/Desktop): ").strip()
+        mostrar_coincidencias(coincidencias)
+        ruta_carpeta = input("\nIntroduce la ruta de la carpeta donde guardar el archivo (ejemplo: C:/Users/Usuario/Desktop):\n> > > ").strip()
 
         # Validar que la ruta es una carpeta válida
         if not os.path.isdir(ruta_carpeta):
@@ -44,9 +47,8 @@ def guardar_coincidencias(coincidencias):
 
         # 🔹 Verificar si ya existe
         if os.path.exists(ruta_archivo):
-            respuesta = input(f"\n⚠️ El archivo '{ruta_archivo}' ya existe. ¿Deseas sobrescribirlo? (s/n): ").strip().lower()
+            respuesta = input(f"\n▲ ATTENTION: El archivo \"$coincidences.txt\" ya existe. ¿Deseas sobrescribirlo? (s/n):\n> > > ").strip().lower()
             if respuesta != "s":
-                print("\n➡️ No se sobrescribirá. Puedes elegir otra carpeta.")
                 continue  # vuelve a pedir ruta
         # Guardar archivo
         try:
@@ -54,16 +56,16 @@ def guardar_coincidencias(coincidencias):
                 f.write("Coincidencias finales:\n")
                 for word in coincidencias:
                     f.write(f"{word}\n")
-            print(f"\n✅ Archivo guardado correctamente en: {ruta_archivo}")
+            print(f"\n▲ Archivo guardado correctamente en: {ruta_archivo}")
             break  # salir del bucle al guardar con éxito
         except Exception as e:
-            print(f"\n❌ Error al guardar el archivo: {e}")
+            print(f"\nError al guardar el archivo: {e}")
             continue
 
 
 
 def eliminar_palabras(coincidencias):
-    eliminar = input("\nIntroduce las palabras que deseas eliminar (separadas por comas): ").lower()
+    eliminar = input("\nIntroduce las palabras que deseas eliminar (separadas por comas):\n> > > ").lower()
     palabras_a_eliminar = [p.strip() for p in eliminar.split(",")]
 
     for palabra in palabras_a_eliminar:
@@ -74,27 +76,28 @@ def eliminar_palabras(coincidencias):
     return coincidencias
 
 if __name__ == "__main__":
-    folder = input("Introduce la ruta de la carpeta a escanear: ").strip()
+    folder = input("Introduce la ruta de la carpeta a escanear:\n> > > ").strip()
 
     if not os.path.isdir(folder):
         print("La ruta no existe o no es una carpeta válida.")
     else:
-        clear_screen()
+
         ruta = folder
         coincidencias_global = scan_files_and_find_coincidences(folder)
 
         # 🔹 Bucle de eliminación hasta que el usuario esté conforme
         while True:
-            print("[Actualizado] Coincidencias encontradas:")
             mostrar_coincidencias(coincidencias_global)
-            respuesta = input("\n¿Deseas eliminar alguna palabra de la lista? (s/n): ").strip().lower()
+            respuesta = input("\n¿Deseas eliminar alguna palabra de la lista? (s/n):\n> > > ").strip().lower()
             if respuesta == "s":
                 coincidencias_global = eliminar_palabras(coincidencias_global)
             else:
                 break
 
         # 🔹 Preguntar si desea guardar en archivo
-        guardar = input("\n¿Quieres guardar las coincidencias en un archivo .txt? (s/n): ").strip().lower()
+        clear_screen()
+        mostrar_coincidencias(coincidencias_global)
+        guardar = input("\n¿Quieres guardar las coincidencias en un archivo .txt? (s/n):\n> > > ").strip().lower()
         if guardar == "s":
             guardar_coincidencias(coincidencias_global)
 
