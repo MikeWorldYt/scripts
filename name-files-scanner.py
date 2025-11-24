@@ -10,7 +10,9 @@ def scan_files_and_find_coincidences(folder_path):
 
     for filename in os.listdir(folder_path):
         if os.path.isfile(os.path.join(folder_path, filename)):
-            words = re.findall(r"[a-zA-Z0-9]+", filename.lower())
+            # 🔹 Separar nombre base y extensión
+            base_name, _ = os.path.splitext(filename)
+            words = re.findall(r"[a-zA-Z0-9]+", base_name.lower())
             for word in words:
                 word_map[word].append(filename)
 
