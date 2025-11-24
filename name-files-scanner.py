@@ -31,24 +31,35 @@ def mostrar_coincidencias(coincidencias):
         print(" (No quedan coincidencias)")
 
 def guardar_coincidencias(coincidencias):
-    ruta_carpeta = input("\nIntroduce la ruta de la carpeta donde guardar el archivo (ejemplo: C:/Users/Usuario/Desktop):\n ").strip()
+    while True:
+        ruta_carpeta = input("\nIntroduce la ruta de la carpeta donde guardar el archivo (ejemplo: C:/Users/Usuario/Desktop): ").strip()
 
-    # Validar que la ruta es una carpeta válida
-    if not os.path.isdir(ruta_carpeta):
-        print("\n❌ La ruta no es una carpeta válida.")
-        return
+        # Validar que la ruta es una carpeta válida
+        if not os.path.isdir(ruta_carpeta):
+            print("\n❌ La ruta no es una carpeta válida.")
+            continue
 
-    # Construir ruta completa del archivo
-    ruta_archivo = os.path.join(ruta_carpeta, "$coincidences.txt")
+        # Construir ruta completa del archivo
+        ruta_archivo = os.path.join(ruta_carpeta, "$coincidences.txt")
 
-    try:
-        with open(ruta_archivo, "w", encoding="utf-8") as f:
-            f.write(f"Coincidencias de {ruta}:\n")
-            for word in coincidencias:
-                f.write(f"{word}\n")
-        print(f"\n✅ Archivo guardado correctamente en: {ruta_archivo}")
-    except Exception as e:
-        print(f"\n❌ Error al guardar el archivo: {e}")
+        # 🔹 Verificar si ya existe
+        if os.path.exists(ruta_archivo):
+            respuesta = input(f"\n⚠️ El archivo '{ruta_archivo}' ya existe. ¿Deseas sobrescribirlo? (s/n): ").strip().lower()
+            if respuesta != "s":
+                print("\n➡️ No se sobrescribirá. Puedes elegir otra carpeta.")
+                continue  # vuelve a pedir ruta
+        # Guardar archivo
+        try:
+            with open(ruta_archivo, "w", encoding="utf-8") as f:
+                f.write("Coincidencias finales:\n")
+                for word in coincidencias:
+                    f.write(f"{word}\n")
+            print(f"\n✅ Archivo guardado correctamente en: {ruta_archivo}")
+            break  # salir del bucle al guardar con éxito
+        except Exception as e:
+            print(f"\n❌ Error al guardar el archivo: {e}")
+            continue
+
 
 
 def eliminar_palabras(coincidencias):
