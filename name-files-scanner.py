@@ -9,6 +9,17 @@ ruta = ""
 def clear_screen():  # Funcion para limpiar la pantalla
     os.system('cls' if os.name == 'nt' else 'clear')
 
+# 🔹 Diccionario
+def es_hexadecimal(palabra):
+    return re.fullmatch(r"[a-f0-9]{5,}", palabra) is not None
+
+def es_numero(palabra):
+    return palabra.isdigit() and len(palabra) >= 1
+
+def es_fecha_formato(palabra):
+    return re.fullmatch(r"\d{2,4}-\d{2}-\d{2}", palabra) is not None
+
+####################################################
 def scan_files_and_find_coincidences(folder_path):
     word_map = defaultdict(list)
 
