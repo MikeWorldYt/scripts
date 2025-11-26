@@ -67,7 +67,9 @@ def mostrar_coincidencias(coincidencias):
         clear_screen()
         print("[Actualizado] Coincidencias encontradas:")
         for word in coincidencias:
-            print(f" ▐ {word}")
+            cantidad = len(coincidencias[word])
+            palabra_formateada = word[:50].ljust(50, ".")  # recorta y rellena
+            print(f" ▐ {palabra_formateada} {cantidad}")
     else:
         print(" (No quedan coincidencias)")
 
@@ -101,8 +103,6 @@ def guardar_coincidencias(coincidencias):
             print(f"\nError al guardar el archivo: {e}")
             continue
 
-
-
 def eliminar_palabras(coincidencias):
     eliminar = input("\nIntroduce las palabras que deseas eliminar (separadas por comas):\n> > > ").lower()
     palabras_a_eliminar = [p.strip() for p in eliminar.split(",")]
@@ -113,6 +113,7 @@ def eliminar_palabras(coincidencias):
     clear_screen()
 
     return coincidencias
+
 
 if __name__ == "__main__":
     folder = input("Introduce la ruta de la carpeta a escanear:\n> > > ").strip()
