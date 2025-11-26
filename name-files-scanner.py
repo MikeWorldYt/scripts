@@ -25,8 +25,21 @@ def scan_files_and_find_coincidences(folder_path):
 
     for filename in os.listdir(folder_path):
         if os.path.isfile(os.path.join(folder_path, filename)):
-            # 🔹 Separar nombre base y extensión
+            # 🔹 Extraer el nombre base sin extension
             base_name, _ = os.path.splitext(filename)
+            base_name_original = base_name
+            # 🔹 Extraer cadenas especiales entre [] o ()
+            especiales_encontrados = []
+            especiales = re.findall(r"\[(.*?)\]|\((.*?)\)", base_name_original)
+            for grupo in especiales:
+                cadena = next(filter(None, grupo))  # obtiene el que no es None
+                if cadena.isdigit():
+                    continue
+                cadena = cadena.strip().lower().replace(" ", "-").replace("_", "-")
+                if cadena and len(cadena) > 1:
+                    especiales_encontrados.append(cadena)
+                    word_map[cadena].append(filename)
+            base_name = re.sub(r"\[(.*?)\]|\((.*?)\)", "", base_name_original)
             # 🔹 Normalizar
             base_name = base_name.lower() # Convertir a minúsculas
             base_name = base_name.replace(" ", "-").replace("_", "-").replace(".", "-") # Reemplazar espacios y guiones bajos por guiones
@@ -36,14 +49,15 @@ def scan_files_and_find_coincidences(folder_path):
             base_name = base_name.strip("-")
             if es_fecha_formato(base_name):
                 continue
-
-            word_map[base_name].append(filename)
+            word_map[base_name].append(filename) # Guardar el nombre base completo
             # 🔹 Guardar subcomponentes útiles
             subwords = base_name.split("-")
             for word in subwords:
                 if len(word) > 1 and not es_numero(word) and not es_hexadecimal(word):
                     word_map[word].append(filename)
-
+            #🔹 Agregar cadenas especiales encontradas
+            for cadena in especiales_encontrados:
+                word_map[cadena].append(filename)
     coincidences = {word: files for word, files in word_map.items() if len(files) > 1 }
     coincidences = dict(sorted(coincidences.items())) # Ordenar alfabéticamente
     return coincidences
