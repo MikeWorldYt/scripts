@@ -16,11 +16,25 @@ def scan_files_and_find_coincidences(folder_path):
         if os.path.isfile(os.path.join(folder_path, filename)):
             # 🔹 Separar nombre base y extensión
             base_name, _ = os.path.splitext(filename)
-            words = re.findall(r"[a-zA-Z0-9]+", base_name.lower())
-            for word in words:
-                word_map[word].append(filename)
+            # 🔹 Normalizar
+            base_name = base_name.lower() # Convertir a minúsculas
+            base_name = base_name.replace(" ", "-").replace("_", "-").replace(".", "-") # Reemplazar espacios y guiones bajos por guiones
+            base_name = re.sub(r"-\(\d+\)", "", base_name) # Eliminar patrones como "-(1)", "-(2)", etc.
+            base_name = re.sub(r"-{2,}", "-", base_name) # Reemplazar múltiples guiones por uno solo
+            base_name = re.sub(r"-\d+$", "", base_name) # Eliminar números al final precedidos por un guion
+            base_name = base_name.strip("-")
+            if es_fecha_formato(base_name):
+                continue
 
-    coincidences = {word: files for word, files in word_map.items() if len(files) > 1}
+            word_map[base_name].append(filename)
+            # 🔹 Guardar subcomponentes útiles
+            subwords = base_name.split("-")
+            for word in subwords:
+                if len(word) > 1 and not es_numero(word) and not es_hexadecimal(word):
+                    word_map[word].append(filename)
+
+    coincidences = {word: files for word, files in word_map.items() if len(files) > 1 }
+    coincidences = dict(sorted(coincidences.items())) # Ordenar alfabéticamente
     return coincidences
 
 def mostrar_coincidencias(coincidencias):
