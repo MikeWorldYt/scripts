@@ -29,12 +29,13 @@ def procesar_nombre(base_name):
             continue  # eliminar hexadecimales largos
         nuevas_partes.append(p)
 
-    nuevo_nombre = "_".join(nuevas_partes)
+    nuevo_nombre = "-".join(nuevas_partes)
     return nuevo_nombre if nuevo_nombre else sufijo_hex(4)
 
 # 🔹 Escanear carpeta y renombrar
 def renombrar_archivos(folder_path):
     existentes = set()
+    print("\n")
     for filename in os.listdir(folder_path):
         ruta_completa = os.path.join(folder_path, filename)
         if not os.path.isfile(ruta_completa):
@@ -56,7 +57,7 @@ def renombrar_archivos(folder_path):
         print(f" ▐ {filename} → {nuevo_nombre}")
 
 if __name__ == "__main__":
-    folder = input("Introduce la ruta de la carpeta a escanear:\n> > > ").strip()
+    folder = input("Enter the path of the folder to scan:\n> > > ").strip()
 
     if not os.path.isdir(folder):
         print("La ruta no existe o no es una carpeta válida.")
