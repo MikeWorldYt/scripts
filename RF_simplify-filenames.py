@@ -6,8 +6,8 @@ def es_hexadecimal(palabra):
     return re.fullmatch(r"[a-f0-9]{5,}", palabra) is not None
 
 # 🔹 Generar sufijo aleatorio de 2 caracteres hex
-def sufijo_hex():
-    return ''.join(random.choice('abcdef0123456789') for _ in range(2))
+def sufijo_hex(value):
+    return ''.join(random.choice('abcdef0123456789') for _ in range(value))
 
 # 🔹 Procesar nombre de archivo
 def procesar_nombre(base_name):
@@ -44,7 +44,7 @@ def renombrar_archivos(folder_path):
             continue
         # Evitar colisiones
         while nuevo_nombre in existentes or os.path.exists(os.path.join(folder_path, nuevo_nombre)):
-            nuevo_base = nuevo_base  + sufijo_hex()
+            nuevo_base = nuevo_base  + sufijo_hex(2)
             nuevo_nombre = nuevo_base + ext
         # Renombrar
         os.rename(ruta_completa, os.path.join(folder_path, nuevo_nombre))
