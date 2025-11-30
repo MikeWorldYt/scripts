@@ -1,6 +1,8 @@
 import os, re, random, string
 from collections import defaultdict
 
+COMMON_WORDS = {"image", "photo", "picture", "video", "download", "file", "document", "scan", "sample", "maxresdefault" }
+
 # 🔹 Detectar si una palabra es hexadecimal (mínimo 5 caracteres)
 def es_hexadecimal(palabra):
     return re.fullmatch(r"[a-f0-9]{5,}", palabra) is not None
@@ -11,13 +13,15 @@ def sufijo_hex(value):
 
 # 🔹 Procesar nombre de archivo
 def procesar_nombre(base_name):
-    partes = re.split(r"[_\-]", base_name)
+    filter_name = base_name
+    for word in COMMON_WORDS:
+        if word in base_name.lower():
+            filter_name = re.sub(word, "", filter_name, flags=re.IGNORECASE)
+    partes = re.split(r"[_\-]", filter_name)
     # Caso 1: nombre completo es hexadecimales
     if es_hexadecimal(base_name):
         if len(base_name) > 4:
             return base_name[:4]  # recortar a 4
-        else:
-            return base_name  # dejar tal cual
     # Caso 2: nombre con texto + hexadecimales
     nuevas_partes = []
     for p in partes:
@@ -26,7 +30,7 @@ def procesar_nombre(base_name):
         nuevas_partes.append(p)
 
     nuevo_nombre = "_".join(nuevas_partes)
-    return nuevo_nombre if nuevo_nombre else base_name[:4]
+    return nuevo_nombre if nuevo_nombre else sufijo_hex(4)
 
 # 🔹 Escanear carpeta y renombrar
 def renombrar_archivos(folder_path):
