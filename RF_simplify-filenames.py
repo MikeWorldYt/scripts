@@ -17,7 +17,7 @@ def procesar_nombre(base_name):
     for word in COMMON_WORDS:
         if word in base_name.lower():
             filter_name = re.sub(word, "", filter_name, flags=re.IGNORECASE)
-    partes = re.split(r"[_\-]", filter_name)
+    partes = re.split(r"([_\-])", filter_name)
     # Caso 1: nombre completo es hexadecimales
     if es_hexadecimal(base_name):
         if len(base_name) > 4:
@@ -28,8 +28,11 @@ def procesar_nombre(base_name):
         if es_hexadecimal(p):
             continue  # eliminar hexadecimales largos
         nuevas_partes.append(p)
-
-    nuevo_nombre = "-".join(nuevas_partes)
+    # Reconstruir nombre
+    nuevo_nombre = "".join(nuevas_partes)
+    nuevo_nombre = nuevo_nombre.strip("-_")
+    if not nuevo_nombre or nuevo_nombre in ["-", "_"]:
+        return sufijo_hex(4)
     return nuevo_nombre if nuevo_nombre else sufijo_hex(4)
 
 # 🔹 Escanear carpeta y renombrar
