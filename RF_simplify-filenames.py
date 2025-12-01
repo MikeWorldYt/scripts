@@ -35,7 +35,7 @@ def procesar_nombre(base_name):
 # 🔹 Escanear carpeta y renombrar
 def renombrar_archivos(folder_path):
     existentes = set()
-    print("\n")
+    print("\nSimplifying filenames:")
     for filename in os.listdir(folder_path):
         ruta_completa = os.path.join(folder_path, filename)
         if not os.path.isfile(ruta_completa):
@@ -54,13 +54,13 @@ def renombrar_archivos(folder_path):
         # Renombrar
         os.rename(ruta_completa, os.path.join(folder_path, nuevo_nombre))
         existentes.add(nuevo_nombre)
-        print(f" ▐ {filename} → {nuevo_nombre}")
+        print(f" ▐ → {filename}\n ▐ ← {nuevo_nombre}\n ▐")
 
 if __name__ == "__main__":
     folder = input("Enter the path of the folder to scan:\n> > > ").strip()
 
     if not os.path.isdir(folder):
-        print("La ruta no existe o no es una carpeta válida.")
+        print("The folder does not exist or is not a valid directory.")
     else:
         renombrar_archivos(folder)
     
