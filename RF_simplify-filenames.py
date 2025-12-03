@@ -67,7 +67,9 @@ def renombrar_archivos(folder_path):
         os.rename(ruta_completa, os.path.join(folder_path, nuevo_nombre))
         existentes.add(nuevo_nombre)
         renamed_count += 1
-        print(f" ▐ → {filename}\n ▐ ← {nuevo_nombre}\n ▐")
+        print(f" ▐ → {filename[:77] + '...' if len(filename) > 80 else filename}")
+        print(f" ▐ ← {nuevo_nombre[:77] + '...' if len(nuevo_nombre) > 80 else nuevo_nombre}")
+        print(" ▐")
     print(f" ▐\n ▐  All cleaned!\n ▐  {len(existentes)} files have been processed.")
     print(f" ▐  {renamed_count} files renamed, {untouched_count} files unchanged.")
     print(" ---------------------------------------------------------------------------")
