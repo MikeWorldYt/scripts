@@ -11,6 +11,9 @@ def es_hexadecimal(palabra):
 def sufijo_hex(value):
     return ''.join(random.choice('abcdef0123456789') for _ in range(value))
 
+def clear_screen():  # Funcion para limpiar la pantalla
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 # 🔹 Procesar nombre de archivo
 def procesar_nombre(base_name):
     filter_name = base_name
@@ -41,7 +44,9 @@ def procesar_nombre(base_name):
 # 🔹 Escanear carpeta y renombrar
 def renombrar_archivos(folder_path):
     existentes = set()
-    print("\nSimplifying filenames:")
+    renamed_count = 0
+    untouched_count = 0
+    print("\n Simplifying filenames:")
     for filename in os.listdir(folder_path):
         ruta_completa = os.path.join(folder_path, filename)
         if not os.path.isfile(ruta_completa):
@@ -52,6 +57,7 @@ def renombrar_archivos(folder_path):
         # 🔸 Si el nombre ya está limpio, no renombrar
         if nuevo_nombre == filename:
             existentes.add(nuevo_nombre)
+            untouched_count += 1
             continue
         # Evitar colisiones
         while nuevo_nombre in existentes or os.path.exists(os.path.join(folder_path, nuevo_nombre)):
@@ -60,15 +66,34 @@ def renombrar_archivos(folder_path):
         # Renombrar
         os.rename(ruta_completa, os.path.join(folder_path, nuevo_nombre))
         existentes.add(nuevo_nombre)
+        renamed_count += 1
         print(f" ▐ → {filename}\n ▐ ← {nuevo_nombre}\n ▐")
+    print(f" ▐\n ▐  All cleaned!\n ▐  {len(existentes)} files have been processed.")
+    print(f" ▐  {renamed_count} files renamed, {untouched_count} files unchanged.")
+    print(" ---------------------------------------------------------------------------")
+    print(" REPORT A BUG: https://github.com/MikeWorldYt/scripts/issues/new")
 
 if __name__ == "__main__":
-    folder = input("Enter the path of the folder to scan:\n> > > ").strip()
-
-    if not os.path.isdir(folder):
-        print("The folder does not exist or is not a valid directory.")
-    else:
-        renombrar_archivos(folder)
-    
-    input("\nPress Enter to exit.")
-
+    os.system("mode con: cols=100")  # Ajustar tamaño de consola en Windows
+    while True:
+        print("**************************************************************************")
+        print("*                                                                        *")
+        print("*                Filename Simplifier Script - v1.0                       *")
+        print("*           by MikeWorldYt (https://github.com/MikeWorldYt)              *")
+        print("*                                                                        *")
+        print("*    This tool removes unnecessary identifiers and common download       *")
+        print("*    words from file names, making it easier to organize your files.     *")
+        print("*                                                                        *")
+        print("**************************************************************************")
+        print("\nGet more info: https://github.com/MikeWorldYt/scripts/wiki/Filename-Simplifier-Docs  ")
+        print("\n---------------------------------------------------------------------------")
+        folder = input("\nEnter the path of the folder to scan:\n> > > ").strip()
+        if not os.path.isdir(folder):
+            print(" ▲ [ERROR] The folder does not exist or is not a valid directory.")
+        else:
+            renombrar_archivos(folder)
+        again = input("\nDo you want to scan another folder? (y/n):\n> > > ").strip().lower()
+        clear_screen()
+        if again not in ["y", ""]:
+            input("\nExiting script. Goodbye!")
+            break
