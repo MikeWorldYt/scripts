@@ -1,7 +1,7 @@
 import os, re, random, string
 from collections import defaultdict
 
-COMMON_WORDS = {"image", "photo", "picture", "video", "download", "file", "document", "scan", "sample", "maxresdefault", "_n" }
+COMMON_WORDS = {"image", "photo", "picture", "video", "audio", "download", "file", "document", "scan", "sample", "maxresdefault", "_n", "2k", "4k", "8k", "fullhd", "1080p", "720p", "480p", "360p", "removebg", "ezgif", "ssstik",}
 
 # 🔹 Detectar si una palabra es hexadecimal (mínimo 5 caracteres)
 def es_hexadecimal(palabra):
