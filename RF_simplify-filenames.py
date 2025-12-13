@@ -1,4 +1,4 @@
-import os, re, random, string
+import os, re, random, json, string
 from collections import defaultdict
 
 COMMON_WORDS = {"image", "photo", "picture", "video", "audio", "download", "file", "document", "scan", "sample", "maxresdefault", "_n", "2k", "4k", "8k", "fullhd", "1080p", "720p", "480p", "360p", "removebg", "ezgif", "ssstik",}
@@ -93,6 +93,13 @@ if __name__ == "__main__":
         if not os.path.isdir(folder):
             print(" ▲ [ERROR] The folder does not exist or is not a valid directory.")
         else:
+            config_path = os.path.join(folder, "ant_config.json")
+            if os.path.isfile(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    folder_config = json.load(f)
+                extra_words = folder_config.get("simplefier", {}).get("COMMON_WORDS", [])
+                if extra_words:
+                    COMMON_WORDS.update(extra_words)
             renombrar_archivos(folder)
         again = input("\nDo you want to scan another folder? (y/n):\n> > > ").strip().lower()
         clear_screen()
