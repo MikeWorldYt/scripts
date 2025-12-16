@@ -94,10 +94,11 @@ if __name__ == "__main__":
             print(" ▲ [ERROR] The folder does not exist or is not a valid directory.")
         else:
             config_path = os.path.join(folder, "ant_config.json")
+            ant_config = None
             if os.path.isfile(config_path):
                 with open(config_path, "r", encoding="utf-8") as f:
-                    folder_config = json.load(f)
-                extra_words = folder_config.get("simplefier", {}).get("COMMON_WORDS", [])
+                    ant_config = json.load(f)
+                extra_words = ant_config.get("simplefier", {}).get("COMMON_WORDS", [])
                 if extra_words:
                     COMMON_WORDS.update(extra_words)
             renombrar_archivos(folder)
