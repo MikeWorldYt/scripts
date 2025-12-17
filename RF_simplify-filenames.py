@@ -7,6 +7,26 @@ COMMON_WORDS = {"image", "photo", "picture", "video", "audio", "download", "file
 def es_hexadecimal(palabra):
     return re.fullmatch(r"[a-f0-9]{5,}", palabra) is not None
 
+# 🧪 EXPERIMENTAL
+def remove_hexadecimal(palabra):
+    tokens = re.findall(r"\([^)]*\)|\[[^\]]*\]|[^()\[\]]+", palabra)
+    nuevos = []
+    for t in tokens:
+        if t.startswith("(") or t.startswith("["):
+            # mantener íntegros los bloques con paréntesis/corchetes
+            nuevos.append(t)
+        else:
+            if not es_hexadecimal(t):
+                continue 
+            # limpiar decoraciones y evaluar como hex
+            plain = re.sub(r"[^a-f0-9]", "", t.lower())
+            if re.fullmatch(r"[a-f0-9]{5,}", plain):
+                nuevos.append(plain[:4])  # truncar a 4
+            else:
+                nuevos.append(t)
+
+    return " ".join(nuevos)
+
 # 🔹 Generar sufijo aleatorio de 2 caracteres hex
 def sufijo_hex(value):
     return ''.join(random.choice('abcdef0123456789') for _ in range(value))
@@ -107,6 +127,7 @@ def taggear_nombre(partes):
 
 # 🔹 Procesar nombre de archivo
 def procesar_nombre(base_name):
+    # base_name = remove_hexadecimal(base_name) # TESTING
     filter_name = base_name
     for word in COMMON_WORDS:
         if word in base_name.lower():
@@ -118,6 +139,7 @@ def procesar_nombre(base_name):
         if len(base_name) > 4:
             return base_name[:4]  # recortar a 4
     # Caso 2: nombre con texto + hexadecimales
+    # tokens = re.findall(r"\([^)]*\)|\[[^\]]*\]|[^()\[\]]+", base_name)  # TESTING
     nuevas_partes = []
     etiqueta, partes = taggear_nombre(partes)
     for p in partes:
