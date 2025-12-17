@@ -89,6 +89,14 @@ def get_keywords(ant_config):
             if isinstance(subnodo, dict):
                 procesar_subcategoria(subnombre, subnodo, strict=False)
 
+def detectar_etiqueta_previa(filter_name):
+    match = re.match(r"^([^\[\]_]+)\s*\[([^\[\]]+)\]_", filter_name)
+    if match:
+        etiqueta_previa = f"{match.group(1)} [{match.group(2)}]_"
+        filter_name = filter_name[match.end():]
+        return etiqueta_previa, filter_name
+    return "", filter_name
+
 def taggear_nombre(partes):
     global KEYWORDS
     partes_filtradas = []
@@ -133,6 +141,7 @@ def procesar_nombre(base_name):
         if word in base_name.lower():
             filter_name = re.sub(word, "", filter_name, flags=re.IGNORECASE)
     filter_name = filter_name.replace(".", "-").replace(",", "-")
+    etiqueta_previa, filter_name = detectar_etiqueta_previa(filter_name)
     partes = re.split(r"([_\-])", filter_name)
     # Caso 1: nombre completo es hexadecimales
     if es_hexadecimal(base_name):
