@@ -134,10 +134,15 @@ def procesar_nombre(base_name):
     return nuevo_nombre if nuevo_nombre else sufijo_hex(4)
 
 # 🔹 Escanear carpeta y renombrar
-def renombrar_archivos(folder_path):
+def renombrar_archivos(folder_path, ant_config):
     existentes = set()
     renamed_count = 0
     untouched_count = 0
+    if ant_config:
+        lib_cfg = ant_config.get("LibKeywords", {})
+        master_path = lib_cfg.get("master")
+        if master_path and os.path.isfile(master_path):
+            print("\n ▲ [INFO] Master Library online")
     print("\n Simplifying filenames:")
     for filename in os.listdir(folder_path):
         ruta_completa = os.path.join(folder_path, filename)
