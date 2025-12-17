@@ -11,8 +11,63 @@ def es_hexadecimal(palabra):
 def sufijo_hex(value):
     return ''.join(random.choice('abcdef0123456789') for _ in range(value))
 
+def push_keyword(word, vars_, th):  # single append point
+    if word:
+        KEYWORDS.append({"word": word, "vars": vars_, "th": th})
+
 def clear_screen():  # Funcion para limpiar la pantalla
     os.system('cls' if os.name == 'nt' else 'clear')
+
+KEYWORDS = []
+
+def get_keywords(ant_config):
+    global KEYWORDS
+    KEYWORDS.clear()
+
+    lib_cfg = ant_config.get("LibKeywords", {})
+    master_path = lib_cfg.get("master")
+    filter_scope = lib_cfg.get("filter")
+
+    if not master_path or not os.path.isfile(master_path):  # invalid source
+        return
+
+    with open(master_path, "r", encoding="utf-8") as f:
+        raw_lib = json.load(f)
+
+    if filter_scope != "global":  # navigate scoped path
+        for key in filter_scope.split("."):
+            raw_lib = raw_lib.get(key, {})
+        if not raw_lib:
+            return
+
+    def procesar_subcategoria(subcat_name, subcat_nodo, strict=False):
+    #   TOPIC LEVEL
+        for entry in subcat_nodo.get("subcat", []):  
+            if not strict and not entry.get("glob", False):
+                continue
+            push_keyword(entry.get("word"), entry.get("vars", []), None)
+
+    #   SUBTOPIC LEVEL
+        for entry in subcat_nodo.get("key", []):  
+            if not strict and not entry.get("glob", False):
+                continue
+            push_keyword(entry.get("word"), entry.get("vars", []), subcat_name)
+
+    # GLOBAL MODE
+    if filter_scope == "global":
+        for _, contenido in raw_lib.items():
+            for _, subcat_nodo in contenido.items():
+                if not subcat_nodo.get("cat", [{}])[0].get("glob", False):  # category gate
+                    continue
+                for subnombre, subnodo in subcat_nodo.items():
+                    if subnombre != "cat" and isinstance(subnodo, dict):
+                        procesar_subcategoria(subnombre, subnodo, strict=True)
+
+    # SCOPED MODE
+    else:
+        for subnombre, subnodo in raw_lib.items():
+            if isinstance(subnodo, dict):
+                procesar_subcategoria(subnombre, subnodo, strict=False)
 
 # 🔹 Procesar nombre de archivo
 def procesar_nombre(base_name):
@@ -99,9 +154,12 @@ if __name__ == "__main__":
                 with open(config_path, "r", encoding="utf-8") as f:
                     ant_config = json.load(f)
                 extra_words = ant_config.get("simplefier", {}).get("COMMON_WORDS", [])
+                librery_path = ant_config.get("LibKeywords", {}).get("master", None)
                 if extra_words:
                     COMMON_WORDS.update(extra_words)
-            renombrar_archivos(folder)
+                if librery_path:
+                    get_keywords(ant_config)
+            renombrar_archivos(folder, ant_config)
         again = input("\nDo you want to scan another folder? (y/n):\n> > > ").strip().lower()
         clear_screen()
         if again not in ["y", ""]:
