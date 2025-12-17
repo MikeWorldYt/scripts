@@ -69,6 +69,42 @@ def get_keywords(ant_config):
             if isinstance(subnodo, dict):
                 procesar_subcategoria(subnombre, subnodo, strict=False)
 
+def taggear_nombre(partes):
+    global KEYWORDS
+    partes_filtradas = []
+    topic_word = None
+    subtopic_words = set()
+
+    for p in partes:
+        match = False
+        p_lower = p.lower() # normalize once
+        for entry in KEYWORDS:
+            for v in entry["vars"]:
+                if p_lower == v.lower(): # case-insensitive
+                    match = True
+                    if entry["th"] is None: # if no 
+                        topic_word = entry["word"] # use father
+                    else:
+                        subtopic_words.add(entry["word"])
+                        if topic_word is None: # if not topic_word
+                            topic_word = entry["th"] # use father as fallback 
+                    break
+            if match:
+                break
+        if not match:
+            partes_filtradas.append(p)
+
+    # Build tag
+    etiqueta = ""
+    if topic_word:
+        etiqueta += topic_word
+    if subtopic_words:
+        etiqueta += " [" + ", ".join(sorted(subtopic_words)) + "]"
+    if etiqueta:
+        etiqueta += "_"
+
+    return etiqueta, partes_filtradas
+
 # 🔹 Procesar nombre de archivo
 def procesar_nombre(base_name):
     filter_name = base_name
@@ -83,12 +119,13 @@ def procesar_nombre(base_name):
             return base_name[:4]  # recortar a 4
     # Caso 2: nombre con texto + hexadecimales
     nuevas_partes = []
+    etiqueta, partes = taggear_nombre(partes)
     for p in partes:
         if es_hexadecimal(p):
             continue  # eliminar hexadecimales largos
         nuevas_partes.append(p)
     # Reconstruir nombre
-    nuevo_nombre = "".join(nuevas_partes)
+    nuevo_nombre = etiqueta + "".join(nuevas_partes)
     nuevo_nombre = nuevo_nombre.strip("-_")
     nuevo_nombre = re.sub(r"[ \-_]+", lambda m: m.group(0)[0], nuevo_nombre)
     nuevo_nombre = re.sub(r"-_|_-", "", nuevo_nombre)
