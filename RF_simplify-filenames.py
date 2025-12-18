@@ -97,31 +97,27 @@ def detectar_etiqueta_previa(filter_name):
         return etiqueta_previa, filter_name
     return "", filter_name
 
-def taggear_nombre(partes):
+def taggear_nombre(filter_name):
     global KEYWORDS
-    partes_filtradas = []
     topic_word = None
     subtopic_words = set()
 
-    for p in partes:
-        match = False
-        p_lower = p.lower() # normalize once
-        for entry in KEYWORDS:
-            for v in entry["vars"]:
-                if p_lower == v.lower(): # case-insensitive
-                    match = True
-                    if entry["th"] is None: # if no 
+    for entry in KEYWORDS:
+        terms = [entry["word"]] + entry.get("vars", [])
+        for term in terms:
+            base = term.strip() # remove extra spaces in keywords
+            variantes = [base, base.replace(" ", "_"), base.replace(" ", "-")] 
+            for v in variantes:
+                if re.search(r"\b" + re.escape(v) + r"\b", filter_name, flags=re.IGNORECASE): # search coincidences
+                    filter_name = re.sub(rf"\b{re.escape(v)}\b", "", filter_name, flags=re.IGNORECASE) # remove coincidences
+                    # Etiquetado
+                    if entry["th"] is None: # if no topic
                         topic_word = entry["word"] # use father
                     else:
                         subtopic_words.add(entry["word"])
                         if topic_word is None: # if not topic_word
                             topic_word = entry["th"] # use father as fallback 
                     break
-            if match:
-                break
-        if not match:
-            partes_filtradas.append(p)
-
     # Build tag
     etiqueta = ""
     if topic_word:
@@ -130,8 +126,7 @@ def taggear_nombre(partes):
         etiqueta += " [" + ", ".join(sorted(subtopic_words)) + "]"
     if etiqueta:
         etiqueta += "_"
-
-    return etiqueta, partes_filtradas
+    return etiqueta, filter_name
 
 # 🔹 Procesar nombre de archivo
 def procesar_nombre(base_name):
@@ -142,6 +137,8 @@ def procesar_nombre(base_name):
             filter_name = re.sub(word, "", filter_name, flags=re.IGNORECASE)
     filter_name = filter_name.replace(".", "-").replace(",", "-")
     etiqueta_previa, filter_name = detectar_etiqueta_previa(filter_name)
+    etiqueta_nueva, filter_name = taggear_nombre(filter_name)
+    etiqueta = etiqueta_nueva if etiqueta_nueva else etiqueta_previa
     partes = re.split(r"([_\-])", filter_name)
     # Caso 1: nombre completo es hexadecimales
     if es_hexadecimal(base_name):
@@ -150,7 +147,7 @@ def procesar_nombre(base_name):
     # Caso 2: nombre con texto + hexadecimales
     # tokens = re.findall(r"\([^)]*\)|\[[^\]]*\]|[^()\[\]]+", base_name)  # TESTING
     nuevas_partes = []
-    etiqueta, partes = taggear_nombre(partes)
+    # etiqueta, partes = taggear_nombre(partes) # <--- ahora aqui
     for p in partes:
         if es_hexadecimal(p):
             continue  # eliminar hexadecimales largos
