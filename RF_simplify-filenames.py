@@ -32,8 +32,14 @@ def sufijo_hex(value):
     return ''.join(random.choice('abcdef0123456789') for _ in range(value))
 
 def push_keyword(word, vars_, th):  # single append point
-    if word:
-        KEYWORDS.append({"word": word, "vars": vars_, "th": th})
+    base_terms = vars_ or []
+    variantes = set()
+    for t in base_terms:
+        t = t.strip()
+        variantes.add(t)
+        variantes.add(t.replace(" ", "_"))
+        variantes.add(t.replace(" ", "-"))
+    KEYWORDS.append({"word": word, "vars": list(variantes), "th": th})
 
 def clear_screen():  # Funcion para limpiar la pantalla
     os.system('cls' if os.name == 'nt' else 'clear')
