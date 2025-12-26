@@ -67,7 +67,6 @@ def get_keywords(ant_config):
             return
 
     def procesar_subcategoria(subcat_name, subcat_nodo, strict=False):
-    #   TOPIC LEVEL
         for entry in subcat_nodo.get("subcat", []):  
             if not strict and not entry.get("glob", False):
                 continue
