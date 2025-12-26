@@ -115,13 +115,13 @@ def taggear_nombre(filter_name):
                     if topic_word is None: # if not topic_word
                         topic_word = entry["th"] # use father as fallback 
                 break
+    def norm_tag(texto):
+        return re.sub(r"[ _]+", "-", texto.strip())
     # Build tag
     etiqueta = ""
     if topic_word:
-        etiqueta += topic_word
-    if subtopic_words:
-        etiqueta += " [" + ", ".join(sorted(subtopic_words)) + "]"
-    if etiqueta:
+        etiqueta = norm_tag(topic_word)
+        etiqueta += " [" + ", ".join(sorted(norm_tag(s) for s in subtopic_words)) + "]" if subtopic_words else " [$uk]"
         etiqueta += "_"
     return etiqueta, filter_name
 
