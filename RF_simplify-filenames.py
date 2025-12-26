@@ -103,21 +103,18 @@ def taggear_nombre(filter_name):
     subtopic_words = set()
 
     for entry in KEYWORDS:
-        terms = [entry["word"]] + entry.get("vars", [])
-        for term in terms:
-            base = term.strip() # remove extra spaces in keywords
-            variantes = [base, base.replace(" ", "_"), base.replace(" ", "-")] 
-            for v in variantes:
-                if re.search(r"\b" + re.escape(v) + r"\b", filter_name, flags=re.IGNORECASE): # search coincidences
-                    filter_name = re.sub(rf"\b{re.escape(v)}\b", "", filter_name, flags=re.IGNORECASE) # remove coincidences
-                    # Etiquetado
-                    if entry["th"] is None: # if no topic
-                        topic_word = entry["word"] # use father
-                    else:
-                        subtopic_words.add(entry["word"])
-                        if topic_word is None: # if not topic_word
-                            topic_word = entry["th"] # use father as fallback 
-                    break
+        for v in entry["vars"]:
+            pat = r"(?<![A-Za-z0-9])" + re.escape(v) + r"(?![A-Za-z0-9])"
+            if re.search(pat, filter_name, flags=re.IGNORECASE): # search coincidences
+                filter_name = re.sub(pat, "", filter_name, flags=re.IGNORECASE) # remove coincidences
+                # Etiquetado
+                if entry["th"] is None: # if no topic
+                    topic_word = entry["word"] # use father
+                else:
+                    subtopic_words.add(entry["word"])
+                    if topic_word is None: # if not topic_word
+                        topic_word = entry["th"] # use father as fallback 
+                break
     # Build tag
     etiqueta = ""
     if topic_word:
