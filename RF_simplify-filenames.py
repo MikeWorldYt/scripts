@@ -168,14 +168,17 @@ def renombrar_archivos(folder_path, ant_config):
     existentes = set()
     renamed_count = 0
     untouched_count = 0
+    ignore_list = set()
+    ignore_prefixes = set("~#@!")
     if ant_config:
         lib_cfg = ant_config.get("LibKeywords", {})
         master_path = lib_cfg.get("master")
         if master_path and os.path.isfile(master_path):
             print("\n ▲ [INFO] Master Library online")
+        ignore_list = set(ant_config.get("simplefier", {}).get("ignore_files", []))
     print("\n Simplifying filenames:")
     for filename in os.listdir(folder_path):
-        if filename in {"desktop.ini", "ant_config.json"} or filename[:1] in "~#@!": # Ignore system files and special files
+        if filename in ignore_list or filename[:1] in ignore_prefixes: # Ignore system files and special files
             continue
         ruta_completa = os.path.join(folder_path, filename)
         if not os.path.isfile(ruta_completa):
