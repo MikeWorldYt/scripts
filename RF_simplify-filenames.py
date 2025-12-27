@@ -175,6 +175,8 @@ def renombrar_archivos(folder_path, ant_config):
             print("\n ▲ [INFO] Master Library online")
     print("\n Simplifying filenames:")
     for filename in os.listdir(folder_path):
+        if filename in {"desktop.ini", "ant_config.json"} or filename[:1] in "~#@!": # Ignore system files and special files
+            continue
         ruta_completa = os.path.join(folder_path, filename)
         if not os.path.isfile(ruta_completa):
             continue
