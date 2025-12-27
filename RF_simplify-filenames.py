@@ -134,7 +134,10 @@ def taggear_nombre(filter_name):
 def procesar_nombre(base_name):
     # base_name = remove_hexadecimal(base_name) # TESTING
     filter_name = base_name
-    for word in COMMON_WORDS:
+    if es_hexadecimal(base_name): # cut first 4 chars if its only hex
+        if len(base_name) > 4:
+            return base_name[:4]
+    for word in COMMON_WORDS: # remove common words
         if word in base_name.lower():
             filter_name = re.sub(word, "", filter_name, flags=re.IGNORECASE)
     filter_name = filter_name.replace(".", "-").replace(",", "-")
@@ -144,10 +147,6 @@ def procesar_nombre(base_name):
         return bool(re.search(r"\[[^\[\]]+\]", etiqueta)) and "$uk" not in etiqueta
     etiqueta = etiqueta_nueva if es_etiqueta_valida(etiqueta_nueva) else etiqueta_previa
     partes = re.split(r"([_\-])", filter_name)
-    # Caso 1: nombre completo es hexadecimales
-    if es_hexadecimal(base_name): # cut first 4 chars if its only hex
-        if len(base_name) > 4:
-            return base_name[:4] 
     nuevas_partes = []
     for p in partes:
         if es_hexadecimal(p):
