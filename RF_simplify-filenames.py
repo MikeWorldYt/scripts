@@ -140,7 +140,9 @@ def procesar_nombre(base_name):
     filter_name = filter_name.replace(".", "-").replace(",", "-")
     etiqueta_previa, filter_name = detectar_etiqueta_previa(filter_name)
     etiqueta_nueva, filter_name = taggear_nombre(filter_name)
-    etiqueta = etiqueta_nueva if etiqueta_nueva else etiqueta_previa
+    def es_etiqueta_valida(etiqueta): # validate if a new tag is not a generic tag
+        return bool(re.search(r"\[[^\[\]]+\]", etiqueta)) and "$uk" not in etiqueta
+    etiqueta = etiqueta_nueva if es_etiqueta_valida(etiqueta_nueva) else etiqueta_previa
     partes = re.split(r"([_\-])", filter_name)
     # Caso 1: nombre completo es hexadecimales
     if es_hexadecimal(base_name):
