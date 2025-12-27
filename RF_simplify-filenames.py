@@ -145,22 +145,19 @@ def procesar_nombre(base_name):
     etiqueta = etiqueta_nueva if es_etiqueta_valida(etiqueta_nueva) else etiqueta_previa
     partes = re.split(r"([_\-])", filter_name)
     # Caso 1: nombre completo es hexadecimales
-    if es_hexadecimal(base_name):
+    if es_hexadecimal(base_name): # cut first 4 chars if its only hex
         if len(base_name) > 4:
-            return base_name[:4]  # recortar a 4
-    # Caso 2: nombre con texto + hexadecimales
-    # tokens = re.findall(r"\([^)]*\)|\[[^\]]*\]|[^()\[\]]+", base_name)  # TESTING
+            return base_name[:4] 
     nuevas_partes = []
-    # etiqueta, partes = taggear_nombre(partes) # <--- ahora aqui
     for p in partes:
         if es_hexadecimal(p):
             continue  # eliminar hexadecimales largos
         nuevas_partes.append(p)
-    # Reconstruir nombre
-    nuevo_nombre = etiqueta + "".join(nuevas_partes)
-    nuevo_nombre = nuevo_nombre.strip("-_")
-    nuevo_nombre = re.sub(r"[ \-_]+", lambda m: m.group(0)[0], nuevo_nombre)
-    nuevo_nombre = re.sub(r"-_|_-", "", nuevo_nombre)
+    # BUILDING THE NAME
+    nuevo_nombre = etiqueta + "".join(nuevas_partes) # rebuild
+    nuevo_nombre = nuevo_nombre.strip("-_ ") # clean residuals at start/end
+    nuevo_nombre = re.sub(r"[ \-_]+", lambda m: m.group(0)[0], nuevo_nombre) # remove multiple separators
+    nuevo_nombre = re.sub(r"-_|_-", "", nuevo_nombre) # remove hybrid separators
     if not nuevo_nombre or nuevo_nombre in ["-", "_"]:
         return sufijo_hex(4)
     return nuevo_nombre if nuevo_nombre else sufijo_hex(4)
@@ -183,6 +180,7 @@ def renombrar_archivos(folder_path, ant_config):
     print("\n Simplifying filenames:")
     for filename in os.listdir(folder_path):
         if filename in ignore_list or filename[:1] in ignore_prefixes or any(filename.endswith(ext) for ext in ignore_exts): # Ignore system files and special files
+            untouched_count += 1
             continue
         ruta_completa = os.path.join(folder_path, filename)
         if not os.path.isfile(ruta_completa):
