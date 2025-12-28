@@ -134,32 +134,27 @@ def taggear_nombre(filter_name):
 def procesar_nombre(base_name):
     # base_name = remove_hexadecimal(base_name) # TESTING
     filter_name = base_name
-    if es_hexadecimal(base_name): # cut first 4 chars if its only hex
-        if len(base_name) > 4:
-            return base_name[:4]
+    if es_hexadecimal(base_name) and len(base_name) > 4: # cut first 4 chars if its only hex
+        return base_name[:4]
     for word in COMMON_WORDS: # remove common words
         if word in base_name.lower():
             filter_name = re.sub(word, "", filter_name, flags=re.IGNORECASE)
-    filter_name = filter_name.replace(".", "-").replace(",", "-")
+    filter_name = filter_name.replace(".", "-").replace(",", "-") # normalize separators
+##  METADATA TAG PROCESSING :
     etiqueta_previa, filter_name = detectar_etiqueta_previa(filter_name)
     etiqueta_nueva, filter_name = taggear_nombre(filter_name)
     def es_etiqueta_valida(etiqueta): # validate if a new tag is not a generic tag
         return bool(re.search(r"\[[^\[\]]+\]", etiqueta)) and "$uk" not in etiqueta
     etiqueta = etiqueta_nueva if es_etiqueta_valida(etiqueta_nueva) else etiqueta_previa
+## NAME PARTS PROCESSING :
     partes = re.split(r"([_\-])", filter_name)
-    nuevas_partes = []
-    for p in partes:
-        if es_hexadecimal(p):
-            continue  # eliminar hexadecimales largos
-        nuevas_partes.append(p)
-    # BUILDING THE NAME
+    nuevas_partes = [p for p in partes if not es_hexadecimal(p)] # remove hexadecimals
+## REBUILDING AND CLEANING :
     nuevo_nombre = etiqueta + "".join(nuevas_partes) # rebuild
     nuevo_nombre = nuevo_nombre.strip("-_ ") # clean residuals at start/end
     nuevo_nombre = re.sub(r"[ \-_]+", lambda m: m.group(0)[0], nuevo_nombre) # remove multiple separators
     nuevo_nombre = re.sub(r"-_|_-", "", nuevo_nombre) # remove hybrid separators
-    if not nuevo_nombre or nuevo_nombre in ["-", "_"]:
-        return sufijo_hex(4)
-    return nuevo_nombre if nuevo_nombre else sufijo_hex(4)
+    return nuevo_nombre if nuevo_nombre not in ("", "-", "_") else sufijo_hex(4)
 
 # 🔹 Escanear carpeta y renombrar
 def renombrar_archivos(folder_path, ant_config):
