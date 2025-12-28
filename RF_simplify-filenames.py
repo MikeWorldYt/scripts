@@ -93,7 +93,7 @@ def get_keywords(ant_config):
             if isinstance(subnodo, dict):
                 procesar_subcategoria(subnombre, subnodo, strict=False)
 
-def detectar_etiqueta_previa(filter_name):
+def DetectPreviousTag(filter_name):
     match = re.match(r"^([^\[\]_]+)\s*\[([^\[\]]+)\]_", filter_name)
     if match:
         etiqueta_previa = f"{match.group(1)} [{match.group(2)}]_"
@@ -101,7 +101,7 @@ def detectar_etiqueta_previa(filter_name):
         return etiqueta_previa, filter_name
     return "", filter_name
 
-def taggear_nombre(filter_name):
+def TaggingName(filter_name):
     global KEYWORDS
     topic_word = None
     subtopic_words = set()
@@ -140,15 +140,15 @@ def ProcessName(base_name):
             filter_name = re.sub(word, "", filter_name, flags=re.IGNORECASE)
     filter_name = filter_name.replace(".", "-").replace(",", "-") # normalize separators
 ##  METADATA TAG PROCESSING :
-    etiqueta_previa, filter_name = detectar_etiqueta_previa(filter_name)
-    etiqueta_nueva, filter_name = taggear_nombre(filter_name)
-    def es_etiqueta_valida(etiqueta): # validate if a new tag is not a generic tag
-        return bool(re.search(r"\[[^\[\]]+\]", etiqueta)) and "$uk" not in etiqueta
-    md_tag= etiqueta_nueva if es_etiqueta_valida(etiqueta_nueva) else etiqueta_previa
+    previous_tag, filter_name = DetectPreviousTag(filter_name)
+    new_tag, filter_name = TaggingName(filter_name)
+    def ValidateTag(new_tag): # validate if a new tag is not a generic tag
+        return bool(re.search(r"\[[^\[\]]+\]", new_tag)) and "$uk" not in new_tag
+    md_tag= new_tag if ValidateTag(new_tag) else previous_tag
 ## NAME PARTS PROCESSING :
     splited_name = re.split(r"([_\-])", filter_name)
     splited_name = [p for p in splited_name if not es_hexadecimal(p)] # remove hexadecimals
-## REBUILDING AND CLEANING :
+## CLEANING AND REBUILDING :
     dirty_name = "".join(splited_name)
     dirty_name = re.sub(r"[ \-_]+", lambda m: m.group(0)[0], dirty_name) # remove multiple separators
     dirty_name = re.sub(r"-_|_-", "", dirty_name) # remove hybrid separators
