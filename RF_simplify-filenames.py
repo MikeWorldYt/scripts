@@ -2,7 +2,6 @@ import os, re, random, json, string
 from collections import defaultdict
 
 COMMON_WORDS = {"image", "photo", "picture", "video", "audio", "download", "file", "document", "scan", "sample", "maxresdefault", "_n", "2k", "4k", "8k", "fullhd", "1080p", "720p", "480p", "360p", "removebg", "ezgif", "ssstik",}
-
 # 🔹 Detectar si una palabra es hexadecimal (mínimo 5 caracteres)
 def es_hexadecimal(palabra):
     return re.fullmatch(r"[a-f0-9]{5,}", palabra) is not None
@@ -123,15 +122,15 @@ def taggear_nombre(filter_name):
     def norm_tag(texto):
         return re.sub(r"[ _]+", "-", texto.strip())
     # Build tag
-    etiqueta = ""
+    md_tag = ""
     if topic_word:
-        etiqueta = norm_tag(topic_word)
-        etiqueta += " [" + ", ".join(sorted(norm_tag(s) for s in subtopic_words)) + "]" if subtopic_words else " [$uk]"
-        etiqueta += "_"
-    return etiqueta, filter_name
+        md_tag = norm_tag(topic_word)
+        md_tag += " [" + ", ".join(sorted(norm_tag(s) for s in subtopic_words)) + "]" if subtopic_words else " [$uk]"
+        md_tag += "_"
+    return md_tag, filter_name
 
 # 🔹 Procesar nombre de archivo
-def procesar_nombre(base_name):
+def ProcessName(base_name):
     # base_name = remove_hexadecimal(base_name) # TESTING
     filter_name = base_name
     if es_hexadecimal(base_name) and len(base_name) > 4: # cut first 4 chars if its only hex
@@ -145,16 +144,20 @@ def procesar_nombre(base_name):
     etiqueta_nueva, filter_name = taggear_nombre(filter_name)
     def es_etiqueta_valida(etiqueta): # validate if a new tag is not a generic tag
         return bool(re.search(r"\[[^\[\]]+\]", etiqueta)) and "$uk" not in etiqueta
-    etiqueta = etiqueta_nueva if es_etiqueta_valida(etiqueta_nueva) else etiqueta_previa
+    md_tag= etiqueta_nueva if es_etiqueta_valida(etiqueta_nueva) else etiqueta_previa
 ## NAME PARTS PROCESSING :
-    partes = re.split(r"([_\-])", filter_name)
-    nuevas_partes = [p for p in partes if not es_hexadecimal(p)] # remove hexadecimals
+    splited_name = re.split(r"([_\-])", filter_name)
+    splited_name = [p for p in splited_name if not es_hexadecimal(p)] # remove hexadecimals
 ## REBUILDING AND CLEANING :
-    nuevo_nombre = etiqueta + "".join(nuevas_partes) # rebuild
-    nuevo_nombre = nuevo_nombre.strip("-_ ") # clean residuals at start/end
-    nuevo_nombre = re.sub(r"[ \-_]+", lambda m: m.group(0)[0], nuevo_nombre) # remove multiple separators
-    nuevo_nombre = re.sub(r"-_|_-", "", nuevo_nombre) # remove hybrid separators
-    return nuevo_nombre if nuevo_nombre not in ("", "-", "_") else sufijo_hex(4)
+    dirty_name = "".join(splited_name)
+    dirty_name = re.sub(r"[ \-_]+", lambda m: m.group(0)[0], dirty_name) # remove multiple separators
+    dirty_name = re.sub(r"-_|_-", "", dirty_name) # remove hybrid separators
+    dirty_name = dirty_name.strip("-_ ") # clean residuals at start/end
+    md_tag = re.sub(r"\s*\[", " [", md_tag) # normalize tag spacing
+    if not dirty_name:  # if empty, add random suffix
+        dirty_name = sufijo_hex(2)
+    new_name = md_tag + dirty_name  # rebuild
+    return new_name if new_name not in ("", "-", "_") else sufijo_hex(4)
 
 # 🔹 Escanear carpeta y renombrar
 def renombrar_archivos(folder_path, ant_config):
@@ -180,23 +183,23 @@ def renombrar_archivos(folder_path, ant_config):
         if not os.path.isfile(ruta_completa):
             continue
         base_name, ext = os.path.splitext(filename)
-        nuevo_base = procesar_nombre(base_name)
-        nuevo_nombre = nuevo_base + ext
+        nuevo_base = ProcessName(base_name)
+        new_name = nuevo_base + ext
         # 🔸 Si el nombre ya está limpio, no renombrar
-        if nuevo_nombre == filename:
-            existentes.add(nuevo_nombre)
+        if new_name == filename:
+            existentes.add(new_name)
             untouched_count += 1
             continue
         # Evitar colisiones
-        while nuevo_nombre in existentes or os.path.exists(os.path.join(folder_path, nuevo_nombre)):
+        while new_name in existentes or os.path.exists(os.path.join(folder_path, new_name)):
             nuevo_base = nuevo_base  + sufijo_hex(2)
-            nuevo_nombre = nuevo_base + ext
+            new_name = nuevo_base + ext
         # Renombrar
-        os.rename(ruta_completa, os.path.join(folder_path, nuevo_nombre))
-        existentes.add(nuevo_nombre)
+        os.rename(ruta_completa, os.path.join(folder_path, new_name))
+        existentes.add(new_name)
         renamed_count += 1
         print(f" ▐ → {filename[:77] + '...' if len(filename) > 80 else filename}")
-        print(f" ▐ ← {nuevo_nombre[:77] + '...' if len(nuevo_nombre) > 80 else nuevo_nombre}")
+        print(f" ▐ ← {new_name[:77] + '...' if len(new_name) > 80 else new_name}")
         print(" ▐")
     print(f" ▐\n ▐  All cleaned!\n ▐  {len(existentes)} files have been processed.")
     print(f" ▐  {renamed_count} files renamed, {untouched_count} files unchanged.")
