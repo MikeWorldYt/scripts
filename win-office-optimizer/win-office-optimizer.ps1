@@ -9,6 +9,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$script:RegistryWriteFailures = 0
+$script:ServiceWriteFailures = 0
 $BackupDirectory = Join-Path $PSScriptRoot 'respaldos'
 $LogPath = Join-Path $PSScriptRoot ("cambios-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 
@@ -54,16 +56,17 @@ function Get-RegistrySnapshot {
 function Set-DwordValue {
     param([string]$Path, [string]$Name, [int]$Value)
     $oldValue = '<no existía>'
-    if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).GetValueNames() -contains $Name)) {
-        $oldValue = (Get-ItemProperty -LiteralPath $Path -Name $Name).$Name
-    }
     try {
+        if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).GetValueNames() -contains $Name)) {
+            $oldValue = (Get-ItemProperty -LiteralPath $Path -Name $Name).$Name
+        }
         if (-not (Test-Path -LiteralPath $Path)) { New-Item -Path $Path -Force | Out-Null }
         New-ItemProperty -LiteralPath $Path -Name $Name -PropertyType DWord -Value $Value -Force | Out-Null
         Write-ChangeLog -Target "$Path\$Name" -Before ([string]$oldValue) -After ([string]$Value)
     } catch {
+        $script:RegistryWriteFailures++
         Write-ChangeLog -Target "$Path\$Name" -Before ([string]$oldValue) -After ([string]$Value) -Result "Error: $($_.Exception.Message)"
-        throw
+        Write-Warning "Could not apply registry setting $Path\$Name; continuing with remaining changes. $($_.Exception.Message)"
     }
 }
 
@@ -144,7 +147,6 @@ function Save-Configuration {
         @{ Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive'; Name = 'DisableFileSyncNGSC' },
         @{ Path = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR'; Name = 'AppCaptureEnabled' },
         @{ Path = 'HKCU:\System\GameConfigStore'; Name = 'GameDVR_Enabled' },
-        @{ Path = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds'; Name = 'ShellFeedsTaskbarViewMode' },
         @{ Path = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy'; Name = 'TailoredExperiencesWithDiagnosticDataEnabled' },
         @{ Path = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo'; Name = 'Enabled' }
     )
@@ -309,6 +311,8 @@ function Invoke-Apply {
     $backupPath = Join-Path $BackupDirectory ("antes-{0}.json" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
     $snapshot | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $backupPath -Encoding UTF8
     Write-Host "Respaldo de reversión: $backupPath" -ForegroundColor Cyan
+    $script:RegistryWriteFailures = 0
+    $script:ServiceWriteFailures = 0
 
     # El punto debe existir antes de desinstalar OneDrive o cambiar directivas y servicios.
     New-SystemRestorePoint
@@ -326,7 +330,6 @@ function Invoke-Apply {
 
     # Noticias e intereses de Windows 10; la directiva de Copilot queda lista si está disponible.
     Set-DwordValue 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds' 'EnableFeeds' 0
-    Set-DwordValue 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds' 'ShellFeedsTaskbarViewMode' 2
     Set-DwordValue 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot' 'TurnOffWindowsCopilot' 1
     Set-DwordValue 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent' 'DisableWindowsConsumerFeatures' 1
     Set-DwordValue 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive' 'DisableFileSyncNGSC' 1
@@ -347,12 +350,18 @@ function Invoke-Apply {
             Write-ChangeLog -Target "Servicio $name (estado; inicio)" -Before "$previousState; $previousStart" -After "$currentState; 4 (deshabilitado)"
             Write-Host "Desactivado servicio prescindible seleccionado: $name"
         } catch {
+            $script:ServiceWriteFailures++
             Write-ChangeLog -Target "Servicio $name" -Before '' -After '' -Result "Error: $($_.Exception.Message)"
             Write-Warning "No se pudo cambiar ${name}: $($_.Exception.Message)"
         }
     }
     Clear-OldTemporaryFiles
-    Write-ChangeLog -Target 'Resultado' -Before '' -After 'Ajustes completados'
+    if ($script:RegistryWriteFailures -gt 0 -or $script:ServiceWriteFailures -gt 0) {
+        Write-ChangeLog -Target 'Resultado' -Before '' -After 'Ajustes completados con fallos parciales' -Result "Registry failures: $script:RegistryWriteFailures; service failures: $script:ServiceWriteFailures"
+        Write-Warning 'Some optional registry or service changes could not be applied. Review the changes log.'
+    } else {
+        Write-ChangeLog -Target 'Resultado' -Before '' -After 'Ajustes completados'
+    }
     Write-Host "Registro de cambios: $LogPath" -ForegroundColor Cyan
     Write-Host 'Listo. Reinicia Windows para aplicar las directivas. Defender y Windows Update no se modificaron.' -ForegroundColor Green
 }
