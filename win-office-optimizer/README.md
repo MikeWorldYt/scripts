@@ -2,7 +2,7 @@
 
 A conservative, reversible PowerShell optimizer for Windows 10 office PCs. It keeps Microsoft Defender and Windows Update enabled.
 
-Before applying **or restoring** settings, the script attempts to create a Windows System Restore point. If Windows cannot create one, the script stops before making those changes. System Protection must be enabled, and Windows must allow another restore point.
+Before applying **or restoring** settings, the script attempts to create a Windows System Restore point. If Windows enforces its 24-hour creation limit, the script reuses the latest existing point from the previous 24 hours. If neither a new nor recent point is available, it stops before making those changes. System Protection must be enabled.
 
 The script also saves the previous settings under `respaldos/` and writes a timestamped `cambios-YYYYMMDD-HHMMSS.log` beside the script. The log records old and new registry values, service changes, restore-point creation, and errors.
 

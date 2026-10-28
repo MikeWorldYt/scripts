@@ -164,6 +164,26 @@ function New-SystemRestorePoint {
         Checkpoint-Computer -Description ("Optimizador Windows {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm')) -RestorePointType MODIFY_SETTINGS -ErrorAction Stop
         Write-ChangeLog -Target 'Punto de restauración del sistema' -Before '' -After 'Creado antes de aplicar ajustes'
     } catch {
+        $recentPoint = $null
+        try {
+            $recentPoint = Get-CimInstance -Namespace 'root/default' -ClassName SystemRestore -ErrorAction Stop |
+                ForEach-Object {
+                    [pscustomobject]@{
+                        Description = $_.Description
+                        SequenceNumber = $_.SequenceNumber
+                        Created = [System.Management.ManagementDateTimeConverter]::ToDateTime($_.CreationTime)
+                    }
+                } |
+                Where-Object { $_.Created -le (Get-Date) -and $_.Created -ge (Get-Date).AddMinutes(-1440) } |
+                Sort-Object Created -Descending |
+                Select-Object -First 1
+        } catch { }
+        if ($recentPoint) {
+            $pointInfo = "#$($recentPoint.SequenceNumber) '$($recentPoint.Description)' at $($recentPoint.Created.ToString('yyyy-MM-dd HH:mm:ss'))"
+            Write-ChangeLog -Target 'Punto de restauración del sistema' -Before '' -After $pointInfo -Result 'Se reutilizó un punto reciente; Windows limita la creación a uno cada 24 horas'
+            Write-Warning "Windows no permite crear otro punto durante 24 horas. Se usará el punto reciente $pointInfo como respaldo previo."
+            return
+        }
         Write-ChangeLog -Target 'Punto de restauración del sistema' -Before '' -After '' -Result "Error; cambios cancelados: $($_.Exception.Message)"
         throw "No se pudo crear el punto de restauración; no se aplicaron los ajustes. Activa Protección del sistema o inténtalo cuando Windows permita crear otro punto. Detalle: $($_.Exception.Message)"
     }
