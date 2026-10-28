@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $BackupDirectory = Join-Path $PSScriptRoot 'respaldos'
-$LogPath = Join-Path $PSScriptRoot ("cambios-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$LogPath = Join-Path $PSScriptRoot ("cambios-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 
 function Write-ChangeLog {
     param([string]$Target, [string]$Before, [string]$After, [string]$Result = 'Aplicado')
@@ -160,33 +160,58 @@ function Save-Configuration {
 }
 
 function New-SystemRestorePoint {
+    $frequencyPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore'
+    $frequencySnapshot = Get-RegistrySnapshot -Path $frequencyPath -Name 'SystemRestorePointCreationFrequency'
+    $previousFrequency = if ($frequencySnapshot.ValueExisted) { [string]$frequencySnapshot.Value } else { '<Windows default: 1440 minutes>' }
+    $checkpointFailure = $null
+    $frequencyRestoreFailure = $null
     try {
-        Checkpoint-Computer -Description ("Optimizador Windows {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm')) -RestorePointType MODIFY_SETTINGS -ErrorAction Stop
-        Write-ChangeLog -Target 'Punto de restauración del sistema' -Before '' -After 'Creado antes de aplicar ajustes'
-    } catch {
-        $recentPoint = $null
         try {
-            $recentPoint = Get-CimInstance -Namespace 'root/default' -ClassName SystemRestore -ErrorAction Stop |
-                ForEach-Object {
-                    [pscustomobject]@{
-                        Description = $_.Description
-                        SequenceNumber = $_.SequenceNumber
-                        Created = [System.Management.ManagementDateTimeConverter]::ToDateTime($_.CreationTime)
-                    }
-                } |
-                Where-Object { $_.Created -le (Get-Date) -and $_.Created -ge (Get-Date).AddMinutes(-1440) } |
-                Sort-Object Created -Descending |
-                Select-Object -First 1
-        } catch { }
-        if ($recentPoint) {
-            $pointInfo = "#$($recentPoint.SequenceNumber) '$($recentPoint.Description)' at $($recentPoint.Created.ToString('yyyy-MM-dd HH:mm:ss'))"
-            Write-ChangeLog -Target 'Punto de restauración del sistema' -Before '' -After $pointInfo -Result 'Se reutilizó un punto reciente; Windows limita la creación a uno cada 24 horas'
-            Write-Warning "Windows no permite crear otro punto durante 24 horas. Se usará el punto reciente $pointInfo como respaldo previo."
-            return
+            if (-not (Test-Path -LiteralPath $frequencyPath)) { New-Item -Path $frequencyPath -Force | Out-Null }
+            New-ItemProperty -LiteralPath $frequencyPath -Name 'SystemRestorePointCreationFrequency' -PropertyType DWord -Value 0 -Force | Out-Null
+            Write-ChangeLog -Target 'System restore point frequency' -Before $previousFrequency -After '0 temporarily; allow this restore point'
+            Checkpoint-Computer -Description ("Optimizador Windows {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm')) -RestorePointType MODIFY_SETTINGS -ErrorAction Stop
+        } catch {
+            $checkpointFailure = $_
         }
-        Write-ChangeLog -Target 'Punto de restauración del sistema' -Before '' -After '' -Result "Error; cambios cancelados: $($_.Exception.Message)"
-        throw "No se pudo crear el punto de restauración; no se aplicaron los ajustes. Activa Protección del sistema o inténtalo cuando Windows permita crear otro punto. Detalle: $($_.Exception.Message)"
+    } finally {
+        try {
+            Restore-RegistryValue -Entry $frequencySnapshot
+        } catch {
+            $frequencyRestoreFailure = $_
+        }
     }
+    if ($frequencyRestoreFailure) {
+        Write-ChangeLog -Target 'System restore point frequency' -Before '0 temporarily' -After '' -Result "Error restoring original setting: $($frequencyRestoreFailure.Exception.Message)"
+        throw "Could not restore the original System Restore frequency setting; no optimizer changes were applied. Detail: $($frequencyRestoreFailure.Exception.Message)"
+    }
+    if (-not $checkpointFailure) {
+        Write-ChangeLog -Target 'System Restore point' -Before '' -After 'Created before applying settings'
+        return
+    }
+
+    $recentPoint = $null
+    try {
+        $recentPoint = Get-CimInstance -Namespace 'root/default' -ClassName SystemRestore -ErrorAction Stop |
+            ForEach-Object {
+                [pscustomobject]@{
+                    Description = $_.Description
+                    SequenceNumber = $_.SequenceNumber
+                    Created = [System.Management.ManagementDateTimeConverter]::ToDateTime($_.CreationTime)
+                }
+            } |
+            Where-Object { $_.Created -le (Get-Date) -and $_.Created -ge (Get-Date).AddMinutes(-1440) } |
+            Sort-Object Created -Descending |
+            Select-Object -First 1
+    } catch { }
+    if ($recentPoint) {
+        $pointInfo = "#$($recentPoint.SequenceNumber) '$($recentPoint.Description)' at $($recentPoint.Created.ToString('yyyy-MM-dd HH:mm:ss'))"
+        Write-ChangeLog -Target 'System Restore point' -Before '' -After $pointInfo -Result 'Recent existing point reused'
+        Write-Warning "New restore-point creation failed. Using the recent existing point $pointInfo as the pre-change rollback point."
+        return
+    }
+    Write-ChangeLog -Target 'System Restore point' -Before '' -After '' -Result "Error; changes canceled: $($checkpointFailure.Exception.Message)"
+    throw "Could not create a System Restore point; no optimizer changes were applied. Enable System Protection or retry after resolving the issue. Detail: $($checkpointFailure.Exception.Message)"
 }
 
 function Remove-OneDrive {
@@ -247,7 +272,7 @@ function Clear-OldTemporaryFiles {
 
         $directories = @(Get-ChildItem -LiteralPath $root -Directory -Force -Recurse -ErrorAction SilentlyContinue | Sort-Object { $_.FullName.Length } -Descending)
         foreach ($directory in $directories) {
-            if ($directory.LastWriteTime -ge $cutoff -or ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+            if ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) { continue }
             try {
                 $remaining = @(Get-ChildItem -LiteralPath $directory.FullName -Force -ErrorAction Stop)
                 if ($remaining.Count -eq 0) {
@@ -277,7 +302,7 @@ function Invoke-Apply {
     } else {
         Add-Member -InputObject $snapshot.OneDrive -NotePropertyName SetupBackupPath -NotePropertyValue '' -Force
     }
-    $backupPath = Join-Path $BackupDirectory ("antes-{0}.json" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    $backupPath = Join-Path $BackupDirectory ("antes-{0}.json" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
     $snapshot | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $backupPath -Encoding UTF8
     Write-Host "Respaldo de reversión: $backupPath" -ForegroundColor Cyan
 
@@ -355,7 +380,11 @@ function Invoke-Restore {
             } else {
                 Remove-ItemProperty -LiteralPath $keyPath -Name DelayedAutoStart -ErrorAction SilentlyContinue
             }
-            if ($service.WasRunning) { Start-Service -Name $service.Name -ErrorAction SilentlyContinue }
+            if ($service.WasRunning) {
+                Start-Service -Name $service.Name -ErrorAction SilentlyContinue
+            } else {
+                Stop-Service -Name $service.Name -Force -ErrorAction SilentlyContinue
+            }
             $restoredState = (Get-Service -Name $service.Name).Status.ToString()
             Write-ChangeLog -Target "Servicio $($service.Name) (estado; inicio)" -Before "$beforeState; $beforeStart" -After "$restoredState; $($service.Start)" -Result 'Restaurado'
         } catch {
