@@ -251,7 +251,7 @@ function Invoke-Apply {
             Write-Host "Desactivado servicio prescindible seleccionado: $name"
         } catch {
             Write-ChangeLog -Target "Servicio $name" -Before '' -After '' -Result "Error: $($_.Exception.Message)"
-            Write-Warning "No se pudo cambiar $name: $($_.Exception.Message)"
+            Write-Warning "No se pudo cambiar ${name}: $($_.Exception.Message)"
         }
     }
     Write-ChangeLog -Target 'Resultado' -Before '' -After 'Ajustes completados'
