@@ -217,6 +217,54 @@ function Remove-OneDrive {
     }
 }
 
+function Clear-OldTemporaryFiles {
+    $cutoff = (Get-Date).AddDays(-7)
+    $roots = @($env:TEMP, (Join-Path $env:windir 'Temp')) | Where-Object { $_ } | Select-Object -Unique
+    $deletedCount = 0
+    $deletedBytes = [long]0
+    $skippedCount = 0
+
+    foreach ($root in $roots) {
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            Write-ChangeLog -Target "Temporary folder $root" -Before '' -After '' -Result 'Not found; skipped'
+            continue
+        }
+        $files = @(Get-ChildItem -LiteralPath $root -File -Force -Recurse -ErrorAction SilentlyContinue)
+        foreach ($file in $files) {
+            if ($file.LastWriteTime -ge $cutoff -or ($file.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+            if ($file.Name -like '~$*' -or $file.Extension -in @('.asd', '.wbk')) { continue }
+            $size = [long]$file.Length
+            try {
+                Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop
+                $deletedCount++
+                $deletedBytes += $size
+                Write-ChangeLog -Target "Temporary file $($file.FullName)" -Before "$size bytes" -After 'Deleted (older than 7 days)'
+            } catch {
+                $skippedCount++
+                Write-ChangeLog -Target "Temporary file $($file.FullName)" -Before "$size bytes" -After '' -Result "Skipped: $($_.Exception.Message)"
+            }
+        }
+
+        $directories = @(Get-ChildItem -LiteralPath $root -Directory -Force -Recurse -ErrorAction SilentlyContinue | Sort-Object { $_.FullName.Length } -Descending)
+        foreach ($directory in $directories) {
+            if ($directory.LastWriteTime -ge $cutoff -or ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+            try {
+                $remaining = @(Get-ChildItem -LiteralPath $directory.FullName -Force -ErrorAction Stop)
+                if ($remaining.Count -eq 0) {
+                    Remove-Item -LiteralPath $directory.FullName -Force -ErrorAction Stop
+                    Write-ChangeLog -Target "Temporary folder $($directory.FullName)" -Before 'Empty; older than 7 days' -After 'Removed'
+                }
+            } catch {
+                $skippedCount++
+                Write-ChangeLog -Target "Temporary folder $($directory.FullName)" -Before '' -After '' -Result "Skipped: $($_.Exception.Message)"
+            }
+        }
+    }
+    $megabytes = [math]::Round($deletedBytes / 1MB, 2)
+    Write-ChangeLog -Target 'Temporary file cleanup' -Before '' -After "$deletedCount files; $megabytes MB released; $skippedCount skipped"
+    Write-Host "Temporary cleanup: removed $deletedCount files ($megabytes MB); skipped $skippedCount locked or inaccessible items."
+}
+
 function Invoke-Apply {
     "Fecha`tResultado`tElemento`tValor anterior`tValor nuevo" | Set-Content -LiteralPath $LogPath -Encoding UTF8
     Write-ChangeLog -Target 'Equipo' -Before '' -After $env:COMPUTERNAME -Result 'Inicio de registro'
@@ -274,6 +322,7 @@ function Invoke-Apply {
             Write-Warning "No se pudo cambiar ${name}: $($_.Exception.Message)"
         }
     }
+    Clear-OldTemporaryFiles
     Write-ChangeLog -Target 'Resultado' -Before '' -After 'Ajustes completados'
     Write-Host "Registro de cambios: $LogPath" -ForegroundColor Cyan
     Write-Host 'Listo. Reinicia Windows para aplicar las directivas. Defender y Windows Update no se modificaron.' -ForegroundColor Green

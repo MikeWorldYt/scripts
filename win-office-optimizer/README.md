@@ -12,6 +12,7 @@ The script also saves the previous settings under `respaldos/` and writes a time
 - Disables Xbox Game Bar and game capture.
 - Hides Windows 10 News and interests and disables consumer app suggestions.
 - Stops and disables `DiagTrack`, `dmwappushservice`, and Xbox services when present.
+- Removes files older than seven days from the current user's and Windows' temporary folders. It keeps recent files, Office lock and recovery files, and does not clear browser caches. Locked or inaccessible files are skipped and logged.
 - Uninstalls the OneDrive sync desktop app and blocks OneDrive sync. It does not delete the local OneDrive folder or cloud files. Browser access and webmail are unaffected.
 - Leaves preinstalled apps installed because removing them does not have a reliable rollback on every PC.
 - Does not change Defender, Windows Update, Search, SysMain, networking, audio, camera, or printing.
@@ -41,4 +42,4 @@ Run the script again as Administrator and choose `2`. Select the backup to resto
 
 The backup includes the current user's preferences and the previous startup settings for the selected services. If a OneDrive installer is found on the PC, a copy is also stored under `respaldos/` so the restore action can reinstall it. Keep that folder beside the script.
 
-System Restore reverts Windows system files and settings; it is not a substitute for a separate backup of important personal data. The script does not delete the local OneDrive folder or cloud files.
+System Restore reverts Windows system files and settings; it is not a substitute for a separate backup of important personal data. Temporary files removed by the cleanup are not recoverable from the restore point. The script does not delete the local OneDrive folder or cloud files.
