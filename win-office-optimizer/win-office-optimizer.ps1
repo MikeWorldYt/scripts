@@ -159,59 +159,63 @@ function Save-Configuration {
     }
 }
 
-function New-SystemRestorePoint {
-    $frequencyPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore'
-    $frequencySnapshot = Get-RegistrySnapshot -Path $frequencyPath -Name 'SystemRestorePointCreationFrequency'
-    $previousFrequency = if ($frequencySnapshot.ValueExisted) { [string]$frequencySnapshot.Value } else { '<Windows default: 1440 minutes>' }
-    $checkpointFailure = $null
-    $frequencyRestoreFailure = $null
+function Get-RecentSystemRestorePoint {
+    $points = @()
     try {
-        try {
-            if (-not (Test-Path -LiteralPath $frequencyPath)) { New-Item -Path $frequencyPath -Force | Out-Null }
-            New-ItemProperty -LiteralPath $frequencyPath -Name 'SystemRestorePointCreationFrequency' -PropertyType DWord -Value 0 -Force | Out-Null
-            Write-ChangeLog -Target 'System restore point frequency' -Before $previousFrequency -After '0 temporarily; allow this restore point'
-            Checkpoint-Computer -Description ("Optimizador Windows {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm')) -RestorePointType MODIFY_SETTINGS -ErrorAction Stop
-        } catch {
-            $checkpointFailure = $_
-        }
-    } finally {
-        try {
-            Restore-RegistryValue -Entry $frequencySnapshot
-        } catch {
-            $frequencyRestoreFailure = $_
-        }
+        $points = @(Get-WmiObject -Namespace 'root\default' -Class SystemRestore -ErrorAction Stop)
+    } catch {
+        $points = @()
     }
-    if ($frequencyRestoreFailure) {
-        Write-ChangeLog -Target 'System restore point frequency' -Before '0 temporarily' -After '' -Result "Error restoring original setting: $($frequencyRestoreFailure.Exception.Message)"
-        throw "Could not restore the original System Restore frequency setting; no optimizer changes were applied. Detail: $($frequencyRestoreFailure.Exception.Message)"
-    }
-    if (-not $checkpointFailure) {
-        Write-ChangeLog -Target 'System Restore point' -Before '' -After 'Created before applying settings'
-        return
+    if ($points.Count -eq 0) {
+        try { $points = @(Get-CimInstance -Namespace 'root\default' -ClassName SystemRestore -ErrorAction Stop) } catch { return $null }
     }
 
-    $recentPoint = $null
-    try {
-        $recentPoint = Get-CimInstance -Namespace 'root/default' -ClassName SystemRestore -ErrorAction Stop |
-            ForEach-Object {
-                [pscustomobject]@{
-                    Description = $_.Description
-                    SequenceNumber = $_.SequenceNumber
-                    Created = [System.Management.ManagementDateTimeConverter]::ToDateTime($_.CreationTime)
-                }
-            } |
-            Where-Object { $_.Created -le (Get-Date) -and $_.Created -ge (Get-Date).AddMinutes(-1440) } |
-            Sort-Object Created -Descending |
-            Select-Object -First 1
-    } catch { }
+    $cutoff = (Get-Date).AddMinutes(-1440)
+    $recentPoints = foreach ($point in $points) {
+        try {
+            if ($point -is [System.Management.ManagementObject]) {
+                $created = $point.ConvertToDateTime($point.CreationTime)
+            } else {
+                $created = [System.Management.ManagementDateTimeConverter]::ToDateTime($point.CreationTime)
+            }
+            if ($created -le (Get-Date) -and $created -ge $cutoff) {
+                [pscustomobject]@{ Description = $point.Description; SequenceNumber = $point.SequenceNumber; Created = $created }
+            }
+        } catch { }
+    }
+    $recentPoints | Sort-Object Created -Descending | Select-Object -First 1
+}
+
+function New-SystemRestorePoint {
+    $recentPoint = Get-RecentSystemRestorePoint
     if ($recentPoint) {
         $pointInfo = "#$($recentPoint.SequenceNumber) '$($recentPoint.Description)' at $($recentPoint.Created.ToString('yyyy-MM-dd HH:mm:ss'))"
         Write-ChangeLog -Target 'System Restore point' -Before '' -After $pointInfo -Result 'Recent existing point reused'
-        Write-Warning "New restore-point creation failed. Using the recent existing point $pointInfo as the pre-change rollback point."
+        Write-Host "Using existing restore point $pointInfo; no new point will be created."
         return
     }
-    Write-ChangeLog -Target 'System Restore point' -Before '' -After '' -Result "Error; changes canceled: $($checkpointFailure.Exception.Message)"
-    throw "Could not create a System Restore point; no optimizer changes were applied. Enable System Protection or retry after resolving the issue. Detail: $($checkpointFailure.Exception.Message)"
+
+    $checkpointWarnings = @()
+    $checkpointFailure = $null
+    try {
+        Checkpoint-Computer -Description ("Optimizador Windows {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm')) -RestorePointType MODIFY_SETTINGS -WarningVariable checkpointWarnings -ErrorAction Stop
+    } catch {
+        $checkpointFailure = $_
+    }
+
+    $warningText = @($checkpointWarnings) -join ' '
+    $checkpointMessage = "$warningText $($checkpointFailure.Exception.Message)"
+    if ($checkpointMessage -match '(?i)1440|24\s*(hours|horas)') {
+        Write-ChangeLog -Target 'System Restore point' -Before '' -After 'Existing point confirmed by Windows rate limit' -Result 'Recent existing point reused'
+        Write-Host 'Windows confirmed a restore point already exists within the last 24 hours; no new point will be created.'
+        return
+    }
+    if ($checkpointFailure -or $warningText) {
+        $failureMessage = if ($checkpointFailure) { $checkpointFailure.Exception.Message } else { $warningText }
+        Write-ChangeLog -Target 'System Restore point' -Before '' -After '' -Result "Error; changes canceled: $failureMessage"
+        throw "Could not create or find a recent System Restore point; no optimizer changes were applied. Enable System Protection or retry after resolving the issue. Detail: $failureMessage"
+    }
+    Write-ChangeLog -Target 'System Restore point' -Before '' -After 'Created before applying settings'
 }
 
 function Remove-OneDrive {
